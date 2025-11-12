@@ -1,0 +1,562 @@
+/**
+ * equipmentexit.css (v3.6)
+ *
+ * CSS COMPLETAMENTE REESCRITO E ESCOPADO.
+ * Este arquivo agora contém todos os estilos para:
+ * 1. front/approval.php (Fila de Ações - Cards)
+ * 2. front/request.php (Minhas Solicitações - Cards)
+ * 3. front/config.php (Configuração - Cards)
+ * 4. front/request.form.php (Formulário de Novo - Cards)
+ *
+ * Todos os seletores são prefixados com classes únicas
+ * para evitar "vazamento" para outras páginas do GLPI.
+ */
+
+/* =================================================================== */
+/* 1. ESTILOS PARA 'front/approval.php' (Fila de Ações)
+/* =================================================================== */
+
+.approval-card-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px; /* Espaçamento entre os cards */
+    justify-content: flex-start;
+    padding-top: 10px;
+}
+
+.approval-card {
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    width: 100%;
+    /* 2 cards por linha em telas grandes */
+    flex-basis: calc(50% - 10px); 
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column; 
+    transition: box-shadow 0.2s ease-in-out;
+}
+
+.approval-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Cores do status (baseado no status ID) */
+.approval-card.status-1 { border-top: 4px solid #f0ad4e; } /* Laranja */
+.approval-card.status-1 .card-status { background-color: #f0ad4e; }
+.approval-card.status-2 { border-top: 4px solid #f0ad4e; } /* Laranja */
+.approval-card.status-2 .card-status { background-color: #f0ad4e; }
+.approval-card.status-3 { border-top: 4px solid #337ab7; } /* Azul */
+.approval-card.status-3 .card-status { background-color: #337ab7; }
+.approval-card.status-4 { border-top: 4px solid #5bc0de; } /* Azul Claro */
+.approval-card.status-4 .card-status { background-color: #5bc0de; }
+
+/* Rodapé do Card (Ações) */
+.approval-card .card-footer {
+    padding: 15px;
+    background: #f9f9f9;
+    border-top: 1px solid #eee;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+.approval-card .form-approve,
+.approval-card .form-reject {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.approval-card .form-reject {
+    margin-top: 10px;
+    border-top: 1px solid #ddd;
+    padding-top: 10px;
+}
+
+/* Botões dentro do card (escopado) */
+.approval-card .btn {
+    width: 100%;
+    box-sizing: border-box; 
+    margin: 0 !important; 
+}
+.approval-card .btn-success { background-color: #5cb85c; border-color: #4cae4c; color: white !important; }
+.approval-card .btn-success:hover { background-color: #449d44; border-color: #398439; }
+.approval-card .btn-danger { background-color: #d9534f; border-color: #d43f3a; color: white !important; }
+.approval-card .btn-danger:hover { background-color: #c9302c; border-color: #ac2925; }
+
+
+/* Input de comentário (escopado) */
+.approval-card input[type="text"] {
+    width: 100%;
+    box-sizing: border-box; 
+    margin: 0;
+    padding: 3px 5px;
+    font-size: 0.85em;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+}
+
+.approval-card .card-awaiting-action {
+    text-align: center;
+    color: #777;
+    font-style: italic;
+    padding: 10px 0;
+}
+
+
+/* =================================================================== */
+/* 2. ESTILOS PARA 'front/request.php' (Minhas Solicitações)
+/* =================================================================== */
+
+.request-card-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px; 
+    justify-content: flex-start;
+    padding-top: 10px;
+}
+
+.request-card {
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    width: 100%;
+    flex-basis: calc(50% - 10px); 
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    transition: box-shadow 0.2s ease-in-out;
+}
+
+.request-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Cores de status na borda */
+.request-card.status-1,
+.request-card.status-2 {
+    border-top: 4px solid #f0ad4e; /* Laranja - Pendente */
+}
+.request-card.status-3,
+.request-card.status-4 {
+    border-top: 4px solid #337ab7; /* Azul - Em Ação */
+}
+.request-card.status-5 {
+    border-top: 4px solid #5cb85c; /* Verde - Concluído */
+}
+.request-card.status-9 {
+    border-top: 4px solid #d9534f; /* Vermelho - Rejeitado */
+}
+
+/* Status dentro do cabeçalho */
+.request-card.status-5 .card-status {
+    background-color: #5cb85c;
+}
+.request-card.status-9 .card-status {
+    background-color: #d9534f;
+}
+
+/* Rodapé do Card (Ações) */
+.request-card .card-footer {
+    padding: 15px;
+    background: #f9f9f9;
+    border-top: 1px solid #eee;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+.request-actions {
+    display: flex;
+    gap: 10px; 
+    justify-content: flex-end; 
+}
+
+/* Estilos de Botão Genéricos (escopados) */
+.request-actions .btn {
+    padding: 6px 12px;
+    border-radius: 4px;
+    text-decoration: none;
+    color: white !important; 
+    font-size: 0.9em;
+    border: none;
+    cursor: pointer;
+}
+.request-actions .btn i {
+    margin-right: 5px;
+}
+.request-actions .btn-primary {
+    background-color: #337ab7; /* Azul GLPI */
+}
+.request-actions .btn-primary:hover {
+    background-color: #286090;
+}
+.request-actions .btn-secondary {
+    background-color: #777; /* Cinza */
+    color: white;
+}
+.request-actions .btn-secondary:hover {
+    background-color: #5e5e5e;
+}
+
+/* =================================================================== */
+/* 3. ESTILOS PARA 'front/config.php' (Configuração)
+/* =================================================================== */
+
+.role-management-card {
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    margin-bottom: 25px;
+    overflow: hidden; 
+}
+
+.role-card-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid #eee;
+    background: #fcfcfc;
+}
+/* Escopa o H2 para SÓ afetar esta tela */
+.role-card-header h2 {
+    margin: 0 0 5px 0;
+    font-size: 1.3em;
+    color: #333;
+}
+.role-card-header h2 i {
+    margin-right: 8px;
+    color: #337ab7;
+}
+.role-card-header p {
+    margin: 0;
+    font-size: 0.9em;
+    color: #555;
+}
+
+/* Corpo (Lista de Usuários) */
+.role-card-body {
+    padding: 0;
+}
+.role-user-list {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+}
+
+.role-user-item, .role-user-item-empty {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    border-bottom: 1px solid #f0f0f0;
+}
+.role-user-item:last-child {
+    border-bottom: none;
+}
+.role-user-item-empty {
+    color: #777;
+    font-style: italic;
+    padding: 15px 20px;
+}
+
+.user-info .user-name {
+    font-weight: bold;
+    color: #333;
+    font-size: 1.05em;
+}
+.user-info .user-login {
+    font-size: 0.9em;
+    color: #666;
+    margin-left: 8px;
+}
+
+/* Botão "Remover" (escopado) */
+.user-actions .btn-danger-outline {
+    background-color: transparent;
+    border: 1px solid #d9534f;
+    color: #d9534f !important; 
+    padding: 5px 10px;
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 0.9em;
+    font-weight: normal;
+    transition: all 0.2s ease;
+}
+.user-actions .btn-danger-outline:hover {
+    background-color: #d9534f;
+    color: #fff !important;
+    text-decoration: none;
+}
+.user-actions .btn-danger-outline i {
+    margin-right: 4px;
+}
+
+/* Rodapé (Formulário de Adicionar) */
+.role-card-footer {
+    background: #f9f9f9;
+    padding: 15px 20px;
+    border-top: 1px solid #eee;
+}
+
+.add-user-form {
+    display: flex;
+    align-items: flex-end; 
+    gap: 15px;
+}
+.add-user-form .form-input {
+    flex-grow: 1; 
+}
+.add-user-form .form-action {
+    flex-shrink: 0; 
+}
+
+/* Botão "Adicionar" (escopado) */
+.add-user-form .submit {
+     padding: 8px 15px !important;
+     font-size: 0.9em !important;
+     background-color: #337ab7; 
+     color: white;
+     border: none;
+     border-radius: 4px;
+     cursor: pointer;
+     height: 34px; 
+     line-height: normal !important;
+}
+.add-user-form .submit:hover {
+    background-color: #286090;
+}
+
+
+/* =================================================================== */
+/* 4. ESTILOS PARA 'front/request.form.php' (Formulário)
+/* =================================================================== */
+
+.equipment-form-container {
+    max-width: 1000px; 
+    margin: 0 auto;
+}
+
+.equipment-form-card {
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    overflow: hidden; 
+}
+
+/* Remove padding/bordas das células de título */
+.equipment-form-card .section-header-cell {
+    padding: 0 !important;
+    border: none !important;
+}
+
+/* Título da Seção (escopado) */
+.equipment-form-card h2.form-section-title {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #333;
+    background-color: #f9f9f9;
+    padding: 12px 20px;
+    margin: 0;
+    border-bottom: 1px solid #e0e0e0;
+}
+.equipment-form-card h2.form-section-title i {
+    margin-right: 10px;
+    color: #337ab7; 
+}
+
+.equipment-form-card .tab_bg_1 td {
+    padding: 12px 20px;
+}
+
+/* Inputs (escopado) */
+.equipment-form-card .glpi_input,
+.equipment-form-card textarea.glpi_input {
+    width: 100% !important;
+    box-sizing: border-box; 
+}
+
+/* Caixa de Item Repetível */
+.item-box {
+    background: #fdfdfd;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    position: relative;
+    overflow: hidden;
+}
+
+.item-box-header {
+    background: #f5f5f5;
+    padding: 5px 10px;
+    border-bottom: 1px solid #e0e0e0;
+    text-align: right; 
+}
+
+/* Botão de Remover Item (X) (escopado) */
+.item-box .btn-icon.remove-item-btn {
+    background: #d9534f;
+    color: white !important; 
+    border: none;
+    border-radius: 50%; 
+    width: 24px;
+    height: 24px;
+    line-height: 24px;
+    padding: 0;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+.item-box .btn-icon.remove-item-btn:hover {
+    background: #c9302c;
+}
+.item-box .btn-icon.remove-item-btn i {
+    line-height: 24px; 
+}
+
+/* Corpo do Card de Item (Layout em Grade) */
+.item-box-body {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* 2 colunas */
+    gap: 15px 20px; 
+    padding: 20px;
+}
+
+/* Wrapper para Label + Input */
+.form-field label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 5px;
+    font-size: 0.9em;
+    color: #444;
+}
+
+/* Botão "Adicionar outro item" (escopado) */
+.btn-action-primary.add-item-btn-styled {
+    background-color: #337ab7;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 10px 15px;
+    font-size: 0.9em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+.btn-action-primary.add-item-btn-styled:hover {
+    background-color: #286090;
+}
+.btn-action-primary.add-item-btn-styled i {
+    margin-right: 6px;
+}
+
+/* Rádios (escopado) */
+.equipment-form-card label[for*='radio_'] {
+    display: inline-block;
+    margin-right: 20px;
+}
+.equipment-form-card .required {
+    color: red;
+    font-weight: bold;
+    margin-left: 3px;
+}
+
+/* =================================================================== */
+/* 5. ESTILOS COMPARTILHADOS (Cards de 'request' e 'approval')
+/* =================================================================== */
+
+/* Cabeçalho do Card (compartilhado) */
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    border-bottom: 1px solid #eee;
+    background: #fcfcfc; 
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+}
+
+.card-id {
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #333;
+}
+
+.card-status {
+    font-weight: bold;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    color: #fff;
+    text-shadow: 1px 1px 1px rgba(0,0,0,0.1);
+}
+
+/* Corpo do Card (compartilhado) */
+.card-body {
+    padding: 15px;
+    font-size: 0.95em;
+    flex-grow: 1; 
+    line-height: 1.5;
+}
+
+.card-section {
+    margin-bottom: 12px;
+}
+.card-section:last-child {
+    margin-bottom: 0;
+}
+
+.card-label {
+    font-weight: bold;
+    color: #555;
+    min-width: 120px; 
+    display: inline-block;
+}
+
+.card-justificativa {
+    background: #fdfdfd;
+    border: 1px dashed #ddd;
+    padding: 8px;
+    margin-top: 4px;
+    border-radius: 4px;
+    max-height: 100px;
+    overflow-y: auto;
+    font-family: monospace; 
+    color: #444;
+}
+
+.card-item-list {
+    margin: 5px 0 0 0;
+    padding-left: 0px;
+    list-style-type: none;
+}
+
+.card-item-list li {
+    padding: 3px 8px;
+    background: #f4f8ff;
+    border: 1px solid #e0e9f5;
+    border-radius: 4px;
+    margin-bottom: 4px;
+    color: #333;
+    font-size: 0.9em;
+}
+
+.card-item-list li .fas {
+    font-size: 0.8em;
+    margin-right: 6px;
+    color: #337ab7;
+}
+
+/* Mensagem de Fila Vazia (compartilhado) */
+.card-empty-message {
+    width: 100%;
+    text-align: center;
+    padding: 40px 20px;
+    background: #f9f9f9;
+    border: 1px dashed #ccc;
+    border-radius: 8px;
+    color: #555;
+}
