@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin name="Saída de Equipamentos" version="3.8.1" state="stable">
+   <key>equipmentexit</key>
+   <authors>
+      <author name="Kawan Costa" />
+   </authors>
+   <description>Gestão de saída de equipamentos e materiais</description>
+   <license>GPLv3</license>
+   <versions>
+      <version min="10.0.0" max="11.99.99" />
+   </versions>
+   <check-directories>
+      <directory>src</directory>
+      <directory>front</directory>
+   </check-directories>
+</plugin>

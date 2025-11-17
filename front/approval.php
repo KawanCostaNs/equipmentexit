@@ -1,39 +1,31 @@
 <?php
 
-
 include ('../../../inc/includes.php'); 
-require_once(__DIR__ . '/../inc/Request.php');
 use GlpiPlugin\Equipmentexit\Request as PluginEquipmentexitRequest;
 
-global $DB;
+global $DB, $CFG_GLPI;
 $plugin_name = 'equipmentexit';
 $user_id = Session::getLoginUserID(); 
 
-// --- Verificação de Papel ---
 function checkUserRole($table_name, $user_id) {
     global $DB;
-    $sql_check = "SELECT COUNT(*) as cpt FROM `$table_name` WHERE `users_id` = " . (int)$user_id;
-    $check_result = $DB->query($sql_check);
-    if ($check_result && ($count_row = $DB->fetchAssoc($check_result)) && $count_row['cpt'] > 0) {
-        return true;
-    }
-    return false;
+    $iterator = $DB->request([
+        'FROM' => $table_name,
+        'WHERE' => ['users_id' => $user_id]
+    ]);
+    return count($iterator) > 0;
 }
+
 $is_gerente    = checkUserRole('glpi_plugin_equipmentexit_gerentes', $user_id);
 $is_governanca = checkUserRole('glpi_plugin_equipmentexit_governanca', $user_id);
 $is_seguranca  = checkUserRole('glpi_plugin_equipmentexit_seguranca', $user_id);
-// --- Fim Verificação de Papel ---
 
-
-// --- Verificação de Acesso à Página ---
 $is_admin = Session::haveRight('config', UPDATE);
 if (!$is_admin && !$is_gerente && !$is_governanca && !$is_seguranca) {
     Html::displayRightError();
 }
-// --- FIM DA CORREÇÃO ---
 
-
-// --- Processamento de Ações POST (v3.3 - Correto) ---
+// --- Processamento POST ---
 $redirect_url = $CFG_GLPI['root_doc'] . "/plugins/$plugin_name/front/approval.php";
 if (isset($_POST['action']) && isset($_POST['request_id']) && $_POST['request_id'] > 0) {
     
@@ -42,20 +34,23 @@ if (isset($_POST['action']) && isset($_POST['request_id']) && $_POST['request_id
     $action     = $_POST['action']; 
 
     $table = PluginEquipmentexitRequest::getTable();
-    $sql_check = "SELECT `status` FROM `$table` WHERE `id` = " . $request_id;
-    $request_status_result = $DB->query($sql_check);
     
-    if (!$request_status_result || $DB->numrows($request_status_result) == 0) {
+    $iterator = $DB->request([
+        'SELECT' => 'status',
+        'FROM'   => $table,
+        'WHERE'  => ['id' => $request_id]
+    ]);
+    
+    if (count($iterator) == 0) {
         Session::addMessageAfterRedirect(__('Solicitação não encontrada.', $plugin_name), true, ERROR);
         Html::redirect($redirect_url);
     }
-    $current_status_row = $DB->fetchAssoc($request_status_result);
+    $current_status_row = $iterator->current();
     $current_status = $current_status_row['status'];
     $update_data = [];
     $new_status = null;
     $message = "";
 
-    // (Lógica POST mantida como original - a verificação de segurança é feita no 'can_act')
     if ($action == 'approve') {
         switch ($current_status) {
             case 1: 
@@ -99,7 +94,6 @@ if (isset($_POST['action']) && isset($_POST['request_id']) && $_POST['request_id
         }
     }
 
-    
     if ($new_status !== null && !empty($update_data)) {
         $DB->update(PluginEquipmentexitRequest::getTable(), $update_data, ['id' => $request_id]);
         Session::addMessageAfterRedirect($message, true, INFO);
@@ -108,116 +102,84 @@ if (isset($_POST['action']) && isset($_POST['request_id']) && $_POST['request_id
     }
     Html::redirect($redirect_url);
 }
-// --- Fim do POST ---
 
-
-// --- Busca de Dados (v3.4 - Modificado por Gemini) ---
-
-// *** MUDANÇA: Buscar lojas do segurança logado ***
+// --- Busca de Dados ---
 $user_lojas = [];
 if ($is_seguranca) {
-    $sql_lojas = "SELECT `loja` FROM `glpi_plugin_equipmentexit_seguranca` WHERE `users_id` = " . (int)$user_id;
-    $res_lojas = $DB->query($sql_lojas);
-    if ($res_lojas) {
-        while ($row = $DB->fetchAssoc($res_lojas)) {
-            $user_lojas[] = $row['loja'];
-        }
+    $iterator = $DB->request([
+        'SELECT' => 'loja',
+        'FROM'   => 'glpi_plugin_equipmentexit_seguranca',
+        'WHERE'  => ['users_id' => $user_id]
+    ]);
+    foreach ($iterator as $row) {
+        $user_lojas[] = $row['loja'];
     }
 }
-// *** FIM DA MUDANÇA ***
 
-$where_clauses = [];
+$where = [];
+$where_or = [];
+
 if ($is_gerente) { 
-    $where_clauses[] = "(req.status = 1)"; 
+    $where_or[] = ['req.status' => 1]; 
 }
 if ($is_governanca) { 
-    $where_clauses[] = "(req.status = 2)"; 
+    $where_or[] = ['req.status' => 2]; 
 }
 
 $req_table = PluginEquipmentexitRequest::getTable();
 $item_table = PluginEquipmentexitRequest::$item_table; 
 
-// *** CORREÇÃO DEFINITIVA: Lógica de WHERE para Segurança ***
 if ($is_seguranca && !empty($user_lojas)) {
-    // Escapa as lojas para a consulta SQL
-    $lojas_sql_in = "('" . implode("','", array_map([$DB, 'escape'], $user_lojas)) . "')";
+    $lojas_escaped = implode("','", array_map([$DB, 'escape'], $user_lojas));
     
-    // O segurança deve ver o chamado se:
-    // (O status for 3 OU 4) E (a ORIGEM for sua loja OU o DESTINO do primeiro item for sua loja)
-    $where_clauses[] = "(
+    $where_or[] = new \QueryExpression("(
         (req.status = 3 OR req.status = 4) AND
         (
-            req.local_origem IN $lojas_sql_in
+            req.local_origem IN ('$lojas_escaped')
             OR
             (SELECT items_check.loja_destino 
              FROM `$item_table` AS items_check
              WHERE items_check.plugin_equipmentexit_requests_id = req.id
              ORDER BY items_check.id ASC
-             LIMIT 1) IN $lojas_sql_in
+             LIMIT 1) IN ('$lojas_escaped')
         )
-    )";
+    )");
 }
-// *** FIM DA CORREÇÃO ***
 
 if ($is_admin) {
-    $where_clauses[] = "(req.status IN (1, 2, 3, 4))";
+    $where_or[] = ['req.status' => [1, 2, 3, 4]];
 }
 
-if (empty($where_clauses)) {
-    $sql_where = "WHERE 0";
+if (empty($where_or)) {
+    $where = ['id' => -1];
 } else {
-    // Usa OR entre os papéis, e garante que o usuário não verá solicitações deletadas
-    $sql_where = "WHERE (" . implode(' OR ', $where_clauses) . ") AND req.is_deleted = 0";
+    $where[] = ['OR' => $where_or];
+    $where['req.is_deleted'] = 0;
 }
 
-$sql_pending = "SELECT DISTINCT
-                    req.id,
-                    req.reason,
-                    req.status, 
-                    req.date_request,
-                    req.date_exit_planned,
-                    req.date_return_planned,
-                    req.users_id_requester,
-                    req.local_origem, -- *** Adicionado para checagem do 'can_act' ***
-                    users.name AS requester_username,
-                    users.realname AS requester_realname,
-                    users.firstname AS requester_firstname,
-                    
-                    (SELECT GROUP_CONCAT(
-                        CONCAT(
-                            items.equipamento_nome, 
-                            ' (Qtd: ', items.quantidade, 
-                            ', Tipo: ', items.equipamento_tipo, 
-                            ', Destino: ', items.loja_destino, ')'
-                        ) SEPARATOR '\n'
-                     ) 
-                     FROM `$item_table` AS items 
-                    WHERE items.plugin_equipmentexit_requests_id = req.id
-                    ) AS item_details_list,
+$iterator = $DB->request([
+    'SELECT' => [
+        'req.id', 'req.reason', 'req.status', 'req.date_request', 'req.date_exit_planned', 'req.date_return_planned', 'req.users_id_requester', 'req.local_origem',
+        'users.name AS requester_username', 'users.realname AS requester_realname', 'users.firstname AS requester_firstname',
+        new \QueryExpression("(SELECT GROUP_CONCAT(
+            CONCAT(items.equipamento_nome, ' (Qtd: ', items.quantidade, ', Tipo: ', items.equipamento_tipo, ', Destino: ', items.loja_destino, ')') SEPARATOR '\n'
+            ) FROM `$item_table` AS items WHERE items.plugin_equipmentexit_requests_id = req.id
+        ) AS item_details_list"),
+        new \QueryExpression("(SELECT items_first.loja_destino FROM `$item_table` AS items_first
+            WHERE items_first.plugin_equipmentexit_requests_id = req.id ORDER BY items_first.id ASC LIMIT 1
+        ) AS first_item_destino")
+    ],
+    'FROM' => "$req_table AS req",
+    'INNER JOIN' => [
+        'glpi_users AS users' => [
+            'ON' => ['req' => 'users_id_requester', 'users' => 'id']
+        ]
+    ],
+    'WHERE' => $where,
+    'ORDER' => 'req.date_request ASC'
+]);
 
-                    -- *** Adicionado para checar o destino DO PRIMEIRO ITEM (para o can_act) ***
-                    (SELECT items_first.loja_destino 
-                     FROM `$item_table` AS items_first
-                     WHERE items_first.plugin_equipmentexit_requests_id = req.id
-                     ORDER BY items_first.id ASC
-                     LIMIT 1
-                    ) AS first_item_destino
-
-                FROM
-                     `$req_table` AS req
-                INNER JOIN
-                    `glpi_users` AS users ON req.users_id_requester = users.id
-                -- *** CORREÇÃO: LEFT JOIN removido ***
-                $sql_where
-                ORDER BY
-                     req.date_request ASC";
-
-$pending_requests_query = $DB->query($sql_pending);
-if (!$pending_requests_query) {
-    Html::header(__('Fila de Ações', $plugin_name), $_SERVER['PHP_SELF'], 'plugins', $plugin_name);
-    Html::displayErrorAndDie("Erro ao buscar solicitações pendentes: " . $DB->error());
-}
-$pending_requests = iterator_to_array($pending_requests_query);
+$pending_requests = iterator_to_array($iterator);
 
 function getStatusNameForQueue($status) {
     global $plugin_name;
@@ -231,10 +193,8 @@ function getStatusNameForQueue($status) {
         default: return __('Desconhecido', $plugin_name);
     }
 }
-// --- Fim Busca de Dados ---
 
-
-// --- Início da Exibição (v3.5 - Card Layout) ---
+// --- Exibição ---
 Html::header(
     __('Fila de Ações Pendentes', $plugin_name), 
     $_SERVER['PHP_SELF'],                   
@@ -242,20 +202,22 @@ Html::header(
     'PluginEquipmentexitRequest',
     $plugin_name
 );
+
+echo '<link rel="stylesheet" type="text/css" href="'.$CFG_GLPI["root_doc"].'/plugins/equipmentexit/css/equipmentexit.css">';
+
 echo "<div class='spaced center-h'>"; 
 echo "<h2><i class='fas fa-tasks'></i> " . __('Solicitações Aguardando sua Ação', $plugin_name) . "</h2>";
 echo "<div class='approval-card-container'>";
 
 if (count($pending_requests) > 0) {
     foreach ($pending_requests as $request) {
-        
-        $requester_display_name = Html::clean($request['requester_firstname'] . " " . $request['requester_realname']);
+        // *** CORREÇÃO: Html::clean -> htmlspecialchars ***
+        $requester_display_name = htmlspecialchars($request['requester_firstname'] . " " . $request['requester_realname'], ENT_QUOTES);
         $status_display = getStatusNameForQueue($request['status']);
         $csrf_token = Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken()]);
         
         $can_act = false;
-        // $is_admin foi definido na correção acima
-         $comment_placeholder = __('Comentário (opcional)', $plugin_name);
+        $comment_placeholder = __('Comentário (opcional)', $plugin_name);
         $approve_button_text = "";
         $show_reject_button = false;
 
@@ -276,7 +238,6 @@ if (count($pending_requests) > 0) {
                 $approve_button_text = __("Confirmar Saída", $plugin_name);
                 $comment_placeholder = __("Obs. da Saída (opcional)", $plugin_name);
                 $show_reject_button = false;
-                // *** MUDANÇA: 'can_act' SÓ libera para a loja de ORIGEM ***
                 if ($is_admin || ($is_seguranca && in_array($request['local_origem'], $user_lojas))) {
                      $can_act = true;
                 }
@@ -285,7 +246,6 @@ if (count($pending_requests) > 0) {
                 $approve_button_text = __("Confirmar Chegada", $plugin_name);
                 $comment_placeholder = __("Obs. da Chegada (opcional)", $plugin_name);
                 $show_reject_button = false;
-                // *** CORREÇÃO: 'can_act' SÓ libera para a loja de DESTINO (do primeiro item) ***
                  if ($is_admin || ($is_seguranca && in_array($request['first_item_destino'], $user_lojas))) {
                     $can_act = true;
                 }
@@ -293,14 +253,11 @@ if (count($pending_requests) > 0) {
         }
 
         echo "<div class='approval-card status-" . $request['status'] . "'>";
-        
         echo "<div class='card-header'>";
         echo "<span class='card-id'>" . sprintf(__('Solicitação #%d'), $request['id']) . "</span>";
         echo "<span class='card-status'>" . $status_display . "</span>";
         echo "</div>"; 
-
         echo "<div class='card-body'>";
-        
         echo "<div class='card-section'>";
         echo "<div><strong class='card-label'>" . __('Solicitante:') . "</strong> " . $requester_display_name . "</div>";
         echo "<div><strong class='card-label'>" . __('Saída Prevista:') . "</strong> " . Html::convDateTime($request['date_exit_planned']) . "</div>";
@@ -308,35 +265,30 @@ if (count($pending_requests) > 0) {
              echo "<div><strong class='card-label'>" . __('Retorno Previsto:') . "</strong> " . Html::convDateTime($request['date_return_planned']) . "</div>";
         }
         echo "</div>";
-
         echo "<div class='card-section'>";
-        echo "<strong class'card-label'>" . __('Justificativa:') . "</strong>";
-        echo "<div class='card-justificativa'>" . nl2br(Html::clean($request['reason'])) . "</div>";
+        echo "<strong class='card-label'>" . __('Justificativa:') . "</strong>";
+        // *** CORREÇÃO: Html::clean -> htmlspecialchars ***
+        echo "<div class='card-justificativa'>" . nl2br(htmlspecialchars($request['reason'], ENT_QUOTES)) . "</div>";
         echo "</div>";
-        
         echo "<div class='card-section'>";
         echo "<strong class='card-label'>" . __('Itens da Solicitação:') . "</strong>";
-        
         if (!empty($request['item_details_list'])) {
             $items = explode("\n", $request['item_details_list']);
             echo "<ul class='card-item-list'>";
             foreach ($items as $item) {
-                echo "<li><i class='fas fa-caret-right'></i> " . Html::clean($item) . "</li>";
+                // *** CORREÇÃO: Html::clean -> htmlspecialchars ***
+                echo "<li><i class='fas fa-caret-right'></i> " . htmlspecialchars($item, ENT_QUOTES) . "</li>";
             }
             echo "</ul>";
         } else {
               echo "<div style='padding-left: 10px;'><i>" . __('Nenhum item detalhado.') . "</i></div>";
         }
         echo "</div>";
-
         echo "</div>"; 
 
         echo "<div class='card-footer approval-actions'>";
-        
         if (!$can_act) {
             echo "<div class='card-awaiting-action'>";
-            
-            
             if ($is_seguranca && ($request['status'] == 3 || $request['status'] == 4)) {
                  echo "<i>" . __('Aguardando ação (outra loja)', $plugin_name) . "</i>";
             } else {
@@ -351,7 +303,6 @@ if (count($pending_requests) > 0) {
             echo "<input type='text' name='comment' placeholder='" . $comment_placeholder . "'>";
             echo "<button type='submit' name='approve_submit' class='btn btn-success'><i class='fas fa-check'></i> " . $approve_button_text . "</button>";
             echo "</form>";
-
             if ($show_reject_button) {
                 echo "<form method='post' action='$redirect_url' class='form-reject'>";
                 echo $csrf_token;
@@ -362,18 +313,15 @@ if (count($pending_requests) > 0) {
                 echo "</form>";
             }
         }
-        
         echo "</div>"; 
         echo "</div>"; 
     }
-
 } else {
     echo "<div class='card-empty-message'>";
     echo "<i class='fas fa-check-circle' style='font-size: 3em; color: #5cb85c;'></i>";
     echo "<p style='font-size: 1.2em; margin-top: 10px;'>" . __('Nenhuma solicitação aguardando sua ação no momento.', $plugin_name) . "</p>";
     echo "</div>";
 }
-
 echo "</div>"; 
 echo "</div>"; 
 Html::footer();
